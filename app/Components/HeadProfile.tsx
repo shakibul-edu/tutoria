@@ -9,7 +9,7 @@ type HeadProfileProps = {
 };
 const sections = [
   { key: "education", icon: <FaGraduationCap className="text-5xl mx-auto" />, label: "Educational info" },
-  { key: "tuition", icon: <GiTeacher className="text-5xl mx-auto" />, label: "Tuition-info" },
+  { key: "qualification", icon: <GiTeacher className="text-5xl mx-auto" />, label: "Qualification info" },
   { key: "personal", icon: <BsFillPersonVcardFill className="text-5xl mx-auto" />, label: "Personal-info" },
   { key: "register", icon: <FaWpforms className="text-5xl mx-auto" />, label: "Register as a teacher" },
   { key: "edit", icon: <FaWpforms className="text-5xl mx-auto" />, label: "Edit as a teacher" },

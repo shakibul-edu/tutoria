@@ -7,6 +7,7 @@ import TuitionInfo from "@/app/Components/TuitionInfo";
 import PersonalInfo from "@/app/Components/PersonalInfo";
 import CreateTeacher from "@/app/Components/CreateTeacher";
 import EditTeacher from "@/app/Components/EditTeacher";
+import Qualification from "@/app/Components/Qualification";
 const profile = () => {
   const [activeSection, setActiveSection] = useState("education");
   return (
@@ -23,7 +24,7 @@ const profile = () => {
             onSectionChange={setActiveSection}
           />
           {activeSection === "education" && <EducationInfo />}
-          {activeSection === "tuition" && <TuitionInfo />}
+          {activeSection === "qualification" && <Qualification />}
           {activeSection === "personal" && <PersonalInfo />}
           {activeSection === "register" && <CreateTeacher />}
           {activeSection === "edit" && <EditTeacher />}

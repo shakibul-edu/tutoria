@@ -13,6 +13,7 @@ import TagForm from "./TagForm";
 import MultiSelect from "./MultiSelect";
 import Availability, { Slot } from "./Availability";
 import { getSlots, getTeacherProfile } from "@/utils/fetchFormInfo";
+import useSlotsFetcher from "@/utils/Hooks/SlotsFetcher";
 
 type FormType = z.infer<typeof formSchema>;
 
@@ -26,6 +27,8 @@ const EditTeacher = () => {
 	const {data: session} = useSession();
 	const [initialData, setInitialData] = useState<Partial<FormType> | undefined>(undefined);
 	const [teacherApiId, setTeacherApiId] = useState<string | undefined>(undefined);
+	
+	const [isLoadingData, setIsLoadingData] = useState(true);
 	
 	
 	const defaultValues: FormType = {
@@ -57,8 +60,11 @@ const EditTeacher = () => {
 	const watchedMediums = watch("medium_list");
 	const watchedGrades = watch("grade_list");
 
-	const [slots, setSlots] = useState<Slot[]>([{ start: "16:00", end: "21:00", days: ["MO"] }]
-	);
+	const {slots, setSlots} = useSlotsFetcher()
+	const {mediums, loading: mediumsLoading, error: mediumsError} = useMedium();
+	const  {grades, loading: gradesLoading, error: gradesError} = useGradesByMedium({medium_id: watchedMediums}); 
+	const {subjects, loading: subjectsLoading, error: subjectsError} = useSubjects({grade_id: watchedGrades});
+	
 
 	const hasNoValidSlots = () => {
 		// helper to convert "HH:MM" to minutes
@@ -108,81 +114,52 @@ const EditTeacher = () => {
 		}
 	};
 	useEffect(() => {
-		const id = (session as any)?.id_token;
+		const idToken = (session as any)?.id_token;
 
-		async function fetchSlots(id: string){
-			if(id){
-				const data = await getSlots(id);
-				if(data){
-					// Group backend slots (one row per day) into Availability Slot[] and sort by start time
-					const grouped: Record<string, Slot & { days: string[] }> = (data as any[]).reduce((acc, item) => {
-						const rawStart: string = item.start_time ?? "";
-						const rawEnd: string = item.end_time ?? "";
-						const start = rawStart.length >= 5 ? rawStart.slice(0, 5) : rawStart;
-						const end = rawEnd.length >= 5 ? rawEnd.slice(0, 5) : rawEnd;
-
-						const key = `${start}-${end}`;
-						if (!acc[key]) acc[key] = { start, end, days: [] };
-
-						const days = typeof item.days_of_week === "string"
-							? item.days_of_week.split(",").map((d: string) => d.trim()).filter(Boolean)
-							: [];
-
-						days.forEach((d: string) => {
-							if (!acc[key].days.includes(d)) acc[key].days.push(d);
-						});
-
-						return acc;
-					}, {});
-
-					// canonical week order for consistent day ordering
-					const weekOrder = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
-					const toMinutes = (t: string) => {
-						const [hh = "0", mm = "0"] = t.split(":");
-						return parseInt(hh, 10) * 60 + parseInt(mm, 10);
-					};
-
-					const slotsArr: Slot[] = Object.values(grouped)
-						.map(s => ({
-							start: s.start,
-							end: s.end,
-							days: s.days.sort((a, b) => weekOrder.indexOf(a) - weekOrder.indexOf(b)),
-						}))
-						.sort((a, b) => toMinutes(a.start) - toMinutes(b.start));
-
-					setSlots(slotsArr);
-					console.log("Fetched slots:", slotsArr);
-				}
-		}
-	}
-		async function fetchData(id:string) {
+		
+		async function fetchData(idToken:string) {
 			
-			if(id){
-				const data = await getTeacherProfile(id);
-				const response = data[0];
-				if (response){
-					// capture teacher id returned by API so we can call update endpoints
-					if (response.id) setTeacherApiId(String(response.id));
-					setInitialData({
-						bio: response.bio,
-						min_salary: response.min_salary,
-						experience_years: response.experience_years,
-						gender: response.gender,
-						teaching_mode: response.teaching_mode,
-						subject_list: response.subject_list,
-						medium_list: response.medium_list,
-						grade_list: response.grade_list,
-						preferred_distance: response.preferred_distance,
-					});
-					initialDataSet();
+			if(idToken){
+				try {
+					const data = await getTeacherProfile(idToken);
+					const response = data[0];
+					if (response){
+						// capture teacher id returned by API so we can call update endpoints
+						if (response.id) setTeacherApiId(String(response.id));
+						setInitialData({
+							bio: response.bio,
+							min_salary: response.min_salary,
+							experience_years: response.experience_years,
+							gender: response.gender,
+							teaching_mode: response.teaching_mode,
+							subject_list: response.subject_list,
+							medium_list: response.medium_list,
+							grade_list: response.grade_list,
+							preferred_distance: response.preferred_distance,
+						});
+						initialDataSet();
+					}
+				} catch (error) {
+					console.error("Error fetching profile:", error);
 				}
 			}
 		}
-		if(id){
-			console.count("Fetching teacher profile and slots");
-			fetchData(id);
-			fetchSlots(id);
+		
+		async function loadAllData() {
+			if(idToken){
+			setIsLoadingData(true);
+			try {
+				await Promise.all([
+				fetchData(idToken)
+				]);
+			} catch (error) {
+				console.error("Error loading data:", error);
+			}
+			setIsLoadingData(false);
+			}
 		}
+
+		loadAllData();
 	},[session]);
 	useEffect(() => {
 		console.log(hasNoValidSlots() ? "No valid availability slots" : "Valid availability slots");
@@ -192,9 +169,6 @@ const EditTeacher = () => {
 	// Reset form when initialData changes
 	
 	
-	const {mediums, loading: mediumsLoading, error: mediumsError} = useMedium();
-	const  {grades, loading: gradesLoading, error: gradesError} = useGradesByMedium({medium_id: watchedMediums}); 
-	const {subjects, loading: subjectsLoading, error: subjectsError} = useSubjects({grade_id: watchedGrades});
 	
 	const handleArrayChange = (name: keyof FormType, value: string) => {
 		const arr = watch(name) as string[];
@@ -238,6 +212,10 @@ const EditTeacher = () => {
 			alert(error.message || "Error updating profile");
 		}
 	};
+
+	if (isLoadingData) {
+		return <Loading />;
+	}
 
 	return (
 		<form className="mt-8" onSubmit={handleSubmit(onSubmit)}>

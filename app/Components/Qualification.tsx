@@ -1,37 +1,42 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { academicProfileSchema } from "../../formSchema";
+import { qualificationSchema } from "../../formSchema";
 
 import { useSession } from "next-auth/react";
-import { submitAcademicProfiles } from "@/utils/formSubmission";
-import { useAcademicProfile } from "@/utils/Hooks/InfoHook";
+import { submitQualification, deleteQualification } from "@/utils/formSubmission";
+import { useQualification } from "@/utils/Hooks/InfoHook";
+import EditableQualification from "./EditableQualification";
 
-type EducationFormValues = z.infer<typeof academicProfileSchema>;
+
+type EducationFormValues = z.infer<typeof qualificationSchema>;
+
 
 const newEducation = (): EducationFormValues => ({
   id: undefined,
   teacher: undefined,
-  institution: "",
-  degree: "",
-  graduation_year: "",
+  organization: "",
+  skill: "",
+  year: "",
   results: "",
   certificates: undefined as unknown as File,
   validated: false,
 });
 
-const EducationInfo = () => {
+const Qualification = () => {
+  const [refreshKey, setRefreshKey] = useState(0);
+  
   const { control, handleSubmit, register, reset, formState: { errors } } = useForm<EducationFormValues>({
-    resolver: zodResolver(academicProfileSchema),
+    resolver: zodResolver(qualificationSchema),
     defaultValues: newEducation(),
     mode: "onBlur",
   });
 
 
   const { data: session, status } = useSession();
-  const {academicProfile} = useAcademicProfile();
+  const { qualification, refreshQualification } = useQualification();
 
   const yearOptions = useMemo(() => {
     const current = new Date().getFullYear();
@@ -39,15 +44,23 @@ const EducationInfo = () => {
     return Array.from({ length: current - start + 1 }, (_, i) => String(current - i));
   }, []);
 
+  const handleUpdate = () => {
+    // Instead of full page reload, we bump a key to trigger hook re-fetch if implemented.
+    // If hook doesn't listen to refreshKey yet, fallback to location.reload for now.
+    setRefreshKey(prev => prev + 1);
+    refreshQualification();
+    
+  };
+
 
 
   const onSubmit = async (e: EducationFormValues) => {
     console.log("Submitting education entry:", e);
     // Single-entry FormData
     const formData = new FormData();
-    formData.append("institution", e.institution);
-    formData.append("degree", e.degree);
-    formData.append("graduation_year", String(e.graduation_year));
+    formData.append("organization", e.organization);
+    formData.append("skill", e.skill);
+    formData.append("year", String(e.year));
     formData.append("results", e.results);
     if (e.certificates) formData.append("certificates", e.certificates);
 
@@ -58,9 +71,10 @@ const EducationInfo = () => {
     const idToken = (session as any)?.id_token;
     console.log("FormData", Object.fromEntries(formData.entries()));
     try {
-      const response = await submitAcademicProfiles(idToken, formData);
+      const response = await submitQualification(idToken, formData);
       if (response) {
-        alert("Academic profile submitted successfully.");
+        alert("Qualification submitted successfully.");
+         refreshQualification();
       }
       // reset for next entry
       reset(newEducation());
@@ -73,83 +87,54 @@ const EducationInfo = () => {
   return (
     <div className="mt-8">
       <div className="w-full max-w-2xl">
-        <h1 className="font-DMSans font-semibold text-2xl border-b-2 border-quaternary4">Educational Info</h1>
-        <h2 className="font-DMSans font-normal text-xl mt-1.5">Your academic profiles</h2>
+        <h1 className="font-DMSans font-semibold text-2xl border-b-2 border-quaternary4">Qualifications</h1>
+        <h2 className="font-DMSans font-normal text-xl mt-1.5">Your professional qualifications</h2>
       </div>
 
-      {/* Display existing academic profiles */}
-      {academicProfile && academicProfile.length > 0 && (
+      {/* Display existing qualifications */}
+      {qualification && qualification.length > 0 && (
         <div className="mt-5 space-y-4">
-          <h3 className="font-DMSans font-semibold text-lg">Saved Academic Profiles</h3>
-          {academicProfile.map((profile, index) => (
-            <div key={profile.id || index} className="border border-quaternary4 bg-gray-50 p-4 rounded-sm">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Degree:</span>
-                  <p className="font-DMSans text-base">{profile.degree}</p>
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Institution:</span>
-                  <p className="font-DMSans text-base">{profile.institution}</p>
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Result:</span>
-                  <p className="font-DMSans text-base">{profile.results}</p>
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Graduation Year:</span>
-                  <p className="font-DMSans text-base">{profile.graduation_year}</p>
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Certificate:</span>
-                  {profile.certificates ? (
-                    <a href={profile.certificates} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
-                      View Certificate
-                    </a>
-                  ) : (
-                    <p className="text-gray-400 text-sm">No certificate</p>
-                  )}
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Status:</span>
-                  <p className={`font-DMSans text-sm ${profile.validated ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {profile.validated ? '✓ Validated' : '⏳ Pending Validation'}
-                  </p>
-                </div>
-              </div>
-            </div>
+          <h3 className="font-DMSans font-semibold text-lg">Saved Qualifications</h3>
+          {qualification.map((qual, index) => (
+            <EditableQualification
+              key={qual.id || index}
+              qual={qual}
+              index={index}
+              yearOptions={yearOptions}
+              onUpdate={handleUpdate}
+            />
           ))}
         </div>
       )}
 
-      {/* Add new academic profile form */}
+      {/* Add new qualification form */}
       <div className="mt-8">
-        <h3 className="font-DMSans font-semibold text-lg mb-3">Add New Academic Profile</h3>
+        <h3 className="font-DMSans font-semibold text-lg mb-3">Add New Qualification</h3>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-6 border border-quaternary4 p-6 rounded-sm">
         {/* Degree */}
         <div className="flex items-center gap-4">
-          <label className="font-DMSans font-normal text-xl w-52">Degree</label>
+          <label className="font-DMSans font-normal text-xl w-52">Skill</label>
           <input
             type="text"
             placeholder="e.g., Secondary / SSC / O-level / Dakhil"
             className="border border-quaternary4 rounded-sm outline-0 w-full p-1.5"
-            {...register("degree")}
+            {...register("skill")}
           />
         </div>
-        {errors.degree && <p className="text-red-500 text-xs ml-[13rem]">{String(errors.degree.message)}</p>}
+        {errors.skill && <p className="text-red-500 text-xs ml-[13rem]">{String(errors.skill.message)}</p>}
 
-        {/* Institution */}
+        {/* Organization */}
         <div className="flex items-center gap-4">
-          <label className="font-DMSans font-normal text-xl w-52">Institution</label>
+          <label className="font-DMSans font-normal text-xl w-52">Organization</label>
           <input
             type="text"
-            placeholder="Enter institution name"
+            placeholder="Enter organization name"
             className="border border-quaternary4 rounded-sm outline-0 w-full p-1.5"
-            {...register("institution")}
+            {...register("organization")}
           />
         </div>
-        {errors.institution && <p className="text-red-500 text-xs ml-[13rem]">{String(errors.institution.message)}</p>}
+        {errors.organization && <p className="text-red-500 text-xs ml-[13rem]">{String(errors.organization.message)}</p>}
 
         {/* Results */}
         <div className="flex items-center gap-4">
@@ -166,14 +151,14 @@ const EducationInfo = () => {
         {/* Graduation Year */}
         <div className="flex items-center gap-4">
           <label className="font-DMSans font-normal text-xl w-52">Passing Year</label>
-          <select className="select w-full outline-0" {...register("graduation_year") }>
+          <select className="select w-full outline-0" {...register("year") }>
             <option value="">Select year</option>
             {yearOptions.map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
         </div>
-        {errors.graduation_year && <p className="text-red-500 text-xs ml-[13rem]">{String(errors.graduation_year.message)}</p>}
+        {errors.year && <p className="text-red-500 text-xs ml-[13rem]">{String(errors.year.message)}</p>}
 
         {/* Certificates (File) */}
         <div className="flex items-center gap-4">
@@ -211,4 +196,4 @@ const EducationInfo = () => {
   );
 };
 
-export default EducationInfo;
+export default Qualification;

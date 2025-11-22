@@ -49,10 +49,43 @@ export async function getSubjects(token: string,  body: {grade_id: string[]} ) {
     }
 }
 
-export async function getTeacherProfile(token: string) {
+export async function getTeacherProfile(token: string, id: string | undefined = undefined) {
     if (token) {
         try {
-            const response = await FetchApi.get('/teacher-profile/', {}, {'Authorization': `Bearer ${token}`});
+            const response = await FetchApi.get('/teacher-profile/', id ? {id:id} : {}, {'Authorization': `Bearer ${token}`});
+         
+            return response;
+        } catch (error) {
+            console.error('Error connecting to server:', error);
+            throw error;
+        }
+    } else {
+        console.warn('No token found, skipping server connection');
+        return null;
+    }
+}
+
+
+export async function getAcademicProfile(token: string) {
+    if (token) {
+        try {
+            const response = await FetchApi.get('/academic-profile/', {}, {'Authorization': `Bearer ${token}`});
+         
+            return response;
+        } catch (error) {
+            console.error('Error connecting to server:', error);
+            throw error;
+        }
+    } else {
+        console.warn('No token found, skipping server connection');
+        return null;
+    }
+}
+
+export async function getQualification(token: string) {
+    if (token) {
+        try {
+            const response = await FetchApi.get('/qualification/', {}, {'Authorization': `Bearer ${token}`});
          
             return response;
         } catch (error) {
