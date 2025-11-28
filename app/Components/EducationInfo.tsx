@@ -8,6 +8,7 @@ import { academicProfileSchema } from "../../formSchema";
 import { useSession } from "next-auth/react";
 import { submitAcademicProfiles } from "@/utils/formSubmission";
 import { useAcademicProfile } from "@/utils/Hooks/InfoHook";
+import EditableAcademic from "./EditableAcademic";
 
 type EducationFormValues = z.infer<typeof academicProfileSchema>;
 
@@ -31,7 +32,7 @@ const EducationInfo = () => {
 
 
   const { data: session, status } = useSession();
-  const {academicProfile} = useAcademicProfile();
+  const {academicProfile, refreshAcademicProfile } = useAcademicProfile();
 
   const yearOptions = useMemo(() => {
     const current = new Date().getFullYear();
@@ -77,47 +78,18 @@ const EducationInfo = () => {
         <h2 className="font-DMSans font-normal text-xl mt-1.5">Your academic profiles</h2>
       </div>
 
-      {/* Display existing academic profiles */}
+      {/* Display existing academic profiles (editable) */}
       {academicProfile && academicProfile.length > 0 && (
         <div className="mt-5 space-y-4">
           <h3 className="font-DMSans font-semibold text-lg">Saved Academic Profiles</h3>
           {academicProfile.map((profile, index) => (
-            <div key={profile.id || index} className="border border-quaternary4 bg-gray-50 p-4 rounded-sm">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Degree:</span>
-                  <p className="font-DMSans text-base">{profile.degree}</p>
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Institution:</span>
-                  <p className="font-DMSans text-base">{profile.institution}</p>
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Result:</span>
-                  <p className="font-DMSans text-base">{profile.results}</p>
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Graduation Year:</span>
-                  <p className="font-DMSans text-base">{profile.graduation_year}</p>
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Certificate:</span>
-                  {profile.certificates ? (
-                    <a href={profile.certificates} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
-                      View Certificate
-                    </a>
-                  ) : (
-                    <p className="text-gray-400 text-sm">No certificate</p>
-                  )}
-                </div>
-                <div>
-                  <span className="font-DMSans font-medium text-sm text-gray-600">Status:</span>
-                  <p className={`font-DMSans text-sm ${profile.validated ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {profile.validated ? '✓ Validated' : '⏳ Pending Validation'}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <EditableAcademic
+              key={profile.id || index}
+              profile={profile}
+              index={index}
+              yearOptions={yearOptions}
+              onUpdate={() => refreshAcademicProfile()}
+            />
           ))}
         </div>
       )}

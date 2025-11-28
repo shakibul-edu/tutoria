@@ -139,6 +139,39 @@ export async function submitAcademicProfiles(token: string, data: any) {
     return null;
 }
 
+export async function updateAcademicProfile(token: string, id: string, data: any) {
+    // Allow partial updates; accept FormData
+    if (!(data instanceof FormData)) {
+        // we could validate with academicProfileSchema.partial(), but server may accept partial
+    }
+    if (token) {
+        try {
+            const isFormData = data instanceof FormData;
+            const response = await FetchApi.put(`/academic-profile/${id}/`, data, {'Authorization': `Bearer ${token}`}, {}, isFormData);
+            return response;
+        } catch (error) {
+            throw new Error((error as {message?: string} | any).message || "Error updating academic profile");
+        }
+    } else {
+        console.error("No token provided");
+    }
+    return null;
+}
+
+export async function deleteAcademicProfile(token: string, id: string) {
+    if (token) {
+        try {
+            const response = await FetchApi.delete(`/academic-profile/${id}/`, undefined, {'Authorization': `Bearer ${token}`});
+            return response;
+        } catch (error) {
+            throw new Error((error as {message?: string} | any).message || "Error deleting academic profile");
+        }
+    } else {
+        console.error("No token provided");
+    }
+    return null;
+}
+
 export async function submitQualification(token: string, data: any) {
     if (token) {
         try {

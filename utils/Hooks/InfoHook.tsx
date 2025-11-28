@@ -7,29 +7,27 @@ export function useAcademicProfile() {
 
     const [academicProfile, setAcademicProfile] = React.useState<[] | academicProfileType[]>([]);
     const {data:session} = useSession();
-
-    React.useEffect(() => {
+    const refreshAcademicProfile = React.useCallback(async () => {
         const idToken = (session as any)?.id_token;
-        async function fetchData(idToken: string){
-            try{
-                const response = await getAcademicProfile(idToken);
+        if (!idToken) return;
+        try{
+            const response = await getAcademicProfile(idToken);
             if(response){
                 setAcademicProfile(response);
             }else{
-                alert("Something went wrong to get profile data")
+                // non-fatal
+                console.warn("Failed to fetch academic profiles");
             }
-            }catch(error: any){
-                alert(error.message)
-            }
-            
+        }catch(error: any){
+            console.error(error?.message || error);
         }
-        if(idToken){
-            fetchData(idToken);
-        }
-    },[session])
-  return (
-    {academicProfile: academicProfile}
-)
+    }, [session]);
+
+    React.useEffect(() => {
+        refreshAcademicProfile();
+    }, [refreshAcademicProfile]);
+
+  return ({academicProfile: academicProfile, refreshAcademicProfile: refreshAcademicProfile})
 }
 
 export function useQualification(){
