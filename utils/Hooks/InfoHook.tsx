@@ -7,6 +7,7 @@ export function useAcademicProfile() {
 
     const [academicProfile, setAcademicProfile] = React.useState<[] | academicProfileType[]>([]);
     const {data:session} = useSession();
+
     const refreshAcademicProfile = React.useCallback(async () => {
         const idToken = (session as any)?.id_token;
         if (!idToken) return;
@@ -43,35 +44,20 @@ export function useQualification(){
                 if (response) {
                     setQualification(response);
                 } else {
-                    alert("Something went wrong to get qualification data");
+                    console.error("Something went wrong to get qualification data");
                 }
             } catch (error: any) {
-                alert(error.message);
+                console.error(error.message);
             }
         }
     }, [session]);
 
     
-
+    // Removed duplicate logic. Now it just calls refreshQualification
     React.useEffect(() => {
-        const idToken = (session as any)?.id_token;
-        async function fetchData(idToken: string){
-            try{
-                const response = await getQualification(idToken);
-            if(response){
-                setQualification(response);
-            }else{
-                alert("Something went wrong to get qualification data")
-            }
-            }catch(error: any){
-                alert(error.message)
-            }
-            
-        }
-        if(idToken){
-            fetchData(idToken);
-        }
-    },[session])
+       refreshQualification();
+    },[refreshQualification])
+
   return (
     {qualification: qualification,
     refreshQualification: refreshQualification

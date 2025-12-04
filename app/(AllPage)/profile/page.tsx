@@ -3,12 +3,13 @@ import { useState } from "react";
 import SidbarProfile from "@/app/Components/SidbarProfile";
 import HeadProfile from "@/app/Components/HeadProfile";
 import EducationInfo from "@/app/Components/EducationInfo";
-import TuitionInfo from "@/app/Components/TuitionInfo";
 import PersonalInfo from "@/app/Components/PersonalInfo";
 import CreateTeacher from "@/app/Components/CreateTeacher";
 import EditTeacher from "@/app/Components/EditTeacher";
 import Qualification from "@/app/Components/Qualification";
-const profile = () => {
+
+// Capitalized component name to follow React rules
+const Profile = () => {
   const [activeSection, setActiveSection] = useState("education");
   return (
     <div className="container mx-auto p-5">
@@ -35,4 +36,4 @@ const profile = () => {
   );
 };
 
-export default profile;
+export default Profile;
