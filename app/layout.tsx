@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "./Components/Header";
 import Footer from "./Components/Footer";
+import GoogleOneTap from "./Components/GoogleOneTap";
 import { Providers } from "@/providers/AuthProviders";
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,8 +32,9 @@ export default function RootLayout({
       >
         <Providers>
           <header>
-          <Header />
-        </header>
+            <Header />
+          </header>
+          <GoogleOneTap />
           <div>{children}</div>
         </Providers>
         
