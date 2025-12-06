@@ -11,7 +11,7 @@ export interface FetchApiOptions {
 }
 
 export class FetchApi {
-    private static baseUrl: string = 'http://127.0.0.1:8000';
+    private static baseUrl: string = process.env.BASE_URL;
 
     private static buildEndpointUrl(endpoint: string): string {
         if (!this.baseUrl) {
