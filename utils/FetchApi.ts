@@ -11,7 +11,7 @@ export interface FetchApiOptions {
 }
 
 export class FetchApi {
-    private static baseUrl: string = 'http://127.0.0.1:8000';
+    private static baseUrl: string = 'https://tutoriaend.shakibul.me';
 
     private static buildEndpointUrl(endpoint: string): string {
         if (!this.baseUrl) {
@@ -58,6 +58,7 @@ export class FetchApi {
             let errorMessage = 'Server error';
             try {
                 const errorData = await response.json();
+                console.log('FetchApi Error Response Data:', errorData);
                 if (errorData && errorData.detail) {
                     errorMessage = errorData.detail;
                 } else if (response.statusText) {

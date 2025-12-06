@@ -13,7 +13,7 @@ export async function createTeacher(token: string, data: FormType) {
     }
     if (token) {
         try {
-            const response = await FetchApi.post("/teacher-profile/", data, {'Authorization': `Bearer ${token}`}, {});
+            const response = await FetchApi.post("/teacher/create/", data, {'Authorization': `Bearer ${token}`}, {});
             return response;
         } catch (error) {
             throw new Error((error as {message?: string} | any).message || "Error creating teacher");
