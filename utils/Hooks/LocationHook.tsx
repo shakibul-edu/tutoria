@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getLocation, setLocation } from '../genralCall';
 
 
@@ -13,25 +13,32 @@ const useLocation = (session: any) => {
     const [shouldSendLocation, setShouldSendLocation] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Stable session reference to avoid effect loops if session object changes but content is same
+    // Actually, session changes when token refreshes. We want that.
+    // However, if session is just referentially different but same content, we might loop.
+    // But next-auth useSession usually handles this well.
+    // The issue might be `session` prop passed in is unstable.
+
+    const idToken = session?.id_token;
+
     useEffect(() => {
-        if (!session) return;
+        if (!idToken) return;
         const getServerLocation = async () => {
-            const idToken = (session as any)?.id_token;
-            if (idToken && session) {
+             try {
                 const loc = await getLocation(idToken);
                 if (loc) {
                     setLocationState(loc);
-                    if (loc !== null) {
-                        localStorage.setItem('user_location', JSON.stringify({ latitude: loc.latitude, longitude: loc.longitude, accuracy: loc.accuracy }));
-                    }
+                    localStorage.setItem('user_location', JSON.stringify({ latitude: loc.latitude, longitude: loc.longitude, accuracy: loc.accuracy }));
                 }
-            }
+             } catch(err) {
+                 // ignore
+             }
         };
         getServerLocation();
-    }, [session]);
+    }, [idToken]); // Use idToken instead of full session object
 
     useEffect(() => {
-        if (!session) return;
+        if (!idToken) return;
         let geoId: number | null = null;
         let permissionChecked = false;
         let cancelled = false;
@@ -42,7 +49,6 @@ const useLocation = (session: any) => {
                 return;
             }
 
-            // Only check permission once per effect
             if (!permissionChecked && navigator.permissions) {
                 try {
                     const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
@@ -61,7 +67,6 @@ const useLocation = (session: any) => {
                     if (cancelled) return;
                     const { latitude, longitude, accuracy } = position.coords;
 
-                    // Ignore low-accuracy fixes (>50m)
                     if (accuracy > 50) {
                         setError("Location accuracy too low, waiting for better fix...");
                         return;
@@ -69,12 +74,12 @@ const useLocation = (session: any) => {
 
                     setLocationState({ latitude, longitude, accuracy });
 
-                    // Previous location check
                     const prevLocationStr = localStorage.getItem('user_location');
+                    let distance = 1000; // default large distance
+
                     if (prevLocationStr) {
                         try {
                             const prevLocation: LocationPosition = JSON.parse(prevLocationStr);
-                            // Haversine distance
                             const toRad = (val: number) => (val * Math.PI) / 180;
                             const R = 6371000;
                             const dLat = toRad(latitude - prevLocation.latitude);
@@ -84,24 +89,36 @@ const useLocation = (session: any) => {
                             const a = Math.sin(dLat / 2) ** 2 +
                                 Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
                             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                            const distance = R * c;
+                            distance = R * c;
+
                             if (distance <= 200) {
                                 setShouldSendLocation(false);
+                            } else {
+                                setShouldSendLocation(true);
                             }
                         } catch (e: any) {
                             setError(e.message);
                         }
                     }
 
-                    // Save latest location
                     localStorage.setItem('user_location', JSON.stringify({ latitude, longitude, accuracy }));
 
-                    if (!shouldSendLocation) {
+                    // We need access to the *current* shouldSendLocation state, but in a callback it might be stale?
+                    // actually this effect runs when idToken changes.
+                    // But inside watchPosition callback, we rely on closure.
+                    // However, we are not depending on 'shouldSendLocation' in dep array because we want to avoid resetting watchPosition.
+                    // Let's use the local calculation of distance.
+
+                    let shouldSend = true;
+                     if (prevLocationStr && distance <= 200) {
+                        shouldSend = false;
+                     }
+
+                    if (!shouldSend) {
                         return;
                     }
 
-                    const idToken = (session as any)?.id_token;
-                    if (session && idToken) {
+                    if (idToken) {
                         const locationString = `${latitude},${longitude},${accuracy.toFixed(2)}`;
                         try {
                             const response = await setLocation(idToken, locationString);
@@ -132,7 +149,7 @@ const useLocation = (session: any) => {
             cancelled = true;
             if (geoId !== null) navigator.geolocation.clearWatch(geoId);
         };
-    }, [session]);
+    }, [idToken]);
 
     return { location, error };
 };
